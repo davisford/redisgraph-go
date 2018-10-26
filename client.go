@@ -9,6 +9,15 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// PutCmd is either ADD or MERGE
+type putCmd string
+
+// constants
+const (
+	create putCmd = "CREATE"
+	merge  putCmd = "MERGE"
+)
+
 func quoteString(i interface{}) interface{} {
 	switch x := i.(type) {
 	case string:
@@ -54,7 +63,6 @@ func randomString(n int) string {
 
 // Node represents a node within a graph.
 type Node struct {
-	ID         string
 	Alias      string
 	Label      string
 	Properties map[string]interface{}
@@ -129,8 +137,19 @@ func (g Graph) New(name string, conn redis.Conn) Graph {
 	return r
 }
 
-// AddNode adds a node to the graph.
+// AddNode adds a node to the graph
 func (g *Graph) AddNode(n *Node) error {
+	return g.put(create, n)
+}
+
+// MergeNode merges a node if it's name, properties match; if it
+// does not exist, it will be created
+func (g *Graph) MergeNode(n *Node) error {
+	return g.put(merge, n)
+}
+
+// put adds or merges a node to the graph.
+func (g *Graph) put(cmd putCmd, n *Node) error {
 	if n.Alias == "" {
 		n.Alias = randomString(10)
 	}
@@ -138,8 +157,8 @@ func (g *Graph) AddNode(n *Node) error {
 	return nil
 }
 
-// AddEdge adds an edge to the graph.
-func (g *Graph) AddEdge(e *Edge) error {
+// PutEdge adds or merges an edge to the graph.
+func (g *Graph) PutEdge(cmd PutCmd, e *Edge) error {
 	// Verify that the edge has source and destination
 	if e.Source == nil || e.Destination == nil {
 		return fmt.Errorf("AddEdge: both source and destination nodes should be defined")
